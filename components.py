@@ -28,6 +28,12 @@ def render_goal_setting_form():
                     duration_days
                 )
                 st.success(f"Goal set for {exercise_name}!")
+                # Hide form after successful submission
+                st.session_state.show_goal_form = False
+                # Clear form inputs
+                if "form_submitted" not in st.session_state:
+                    st.session_state.form_submitted = True
+                st.rerun()
             else:
                 st.error(message)
 
