@@ -60,10 +60,33 @@ def render_progress_tracking():
             total_done = progress['quantity'].sum()
             progress_pct = calculate_progress(total_done, target)
 
+            # Progress metrics
             st.metric(
                 "Progress",
                 f"{total_done}/{target} ({progress_pct:.1f}%)"
             )
+
+            # Custom progress bar with tick marks
+            progress_html = f"""
+                <div style="
+                    width: 100%;
+                    height: 30px;
+                    background-color: #f0f2f6;
+                    border-radius: 10px;
+                    position: relative;
+                    margin: 10px 0;
+                ">
+                    <div style="
+                        width: {min(progress_pct, 100)}%;
+                        height: 100%;
+                        background-color: #FF4B4B;
+                        border-radius: 10px;
+                        transition: width 0.5s ease-in-out;
+                    "></div>
+                    {''.join([f'<div style="position: absolute; top: -15px; left: {i}%; transform: translateX(-50%); font-size: 12px;">|</div>' for i in range(0, 101, 10)])}
+                </div>
+            """
+            st.markdown(progress_html, unsafe_allow_html=True)
 
             if progress_pct >= 100:
                 celebrate_completion(exercise)
