@@ -9,8 +9,7 @@ class DataManager:
     def __init__(self):
         """Initialize DataManager with database connection"""
         try:
-            self.db: Iterator[Session] = get_db()
-            self.session = next(self.db)
+            self.session = get_db()
         except Exception as e:
             st.error(f"Failed to connect to database: {str(e)}")
             raise
@@ -107,3 +106,8 @@ class DataManager:
         except Exception as e:
             self.session.rollback()
             raise Exception(f"Failed to save data: {str(e)}")
+
+    def __del__(self):
+        """Close database session when object is destroyed"""
+        if hasattr(self, 'session'):
+            self.session.close()
