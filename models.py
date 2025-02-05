@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Date, Boolean, Float
+from sqlalchemy import create_engine, Column, Integer, String, Date, Boolean, Float, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -65,8 +65,8 @@ def get_db():
 
     db = SessionLocal()
     try:
-        # Test the connection
-        db.execute("SELECT 1")
+        # Test the connection with proper text() wrapper
+        db.execute(text("SELECT 1"))
         return db
     except Exception as e:
         db.close()
