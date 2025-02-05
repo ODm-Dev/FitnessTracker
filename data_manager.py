@@ -1,59 +1,76 @@
 import pandas as pd
-import streamlit as st
-from datetime import datetime, timedelta
-import os
+from datetime import datetime
+from sqlalchemy.orm import Session
+from models import Goal, Progress, get_db
+from typing import Iterator
 
 class DataManager:
     def __init__(self):
-        """Initialize DataManager with goals and progress DataFrames"""
-        if 'goals_df' not in st.session_state:
-            st.session_state.goals_df = pd.DataFrame(
-                columns=['exercise', 'target', 'start_date', 'duration_days', 'completed']
-            )
-        if 'progress_df' not in st.session_state:
-            st.session_state.progress_df = pd.DataFrame(
-                columns=['exercise', 'date', 'quantity']
-            )
-        
-    def add_goal(self, exercise, target, start_date, duration_days):
+        """Initialize DataManager with database connection"""
+        self.db: Iterator[Session] = get_db()
+        self.session = next(self.db)
+
+    def add_goal(self, exercise: str, target: int, start_date: datetime.date, duration_days: int) -> None:
         """Add a new exercise goal"""
-        new_goal = pd.DataFrame({
-            'exercise': [exercise],
-            'target': [target],
-            'start_date': [start_date],
-            'duration_days': [duration_days],
-            'completed': [False]
-        })
-        st.session_state.goals_df = pd.concat([st.session_state.goals_df, new_goal], ignore_index=True)
+        new_goal = Goal(
+            exercise=exercise,
+            target=target,
+            start_date=start_date,
+            duration_days=duration_days,
+            completed=False
+        )
+        self.session.add(new_goal)
+        self.session.commit()
 
-    def add_progress(self, exercise, date, quantity):
+    def add_progress(self, exercise: str, date: datetime.date, quantity: int) -> None:
         """Add progress entry for an exercise"""
-        new_progress = pd.DataFrame({
-            'exercise': [exercise],
-            'date': [date],
-            'quantity': [quantity]
-        })
-        st.session_state.progress_df = pd.concat([st.session_state.progress_df, new_progress], ignore_index=True)
+        new_progress = Progress(
+            exercise=exercise,
+            date=date,
+            quantity=quantity
+        )
+        self.session.add(new_progress)
+        self.session.commit()
 
-    def get_goal(self, exercise):
+    def get_goal(self, exercise: str) -> Goal:
         """Get goal details for an exercise"""
-        goal = st.session_state.goals_df[st.session_state.goals_df['exercise'] == exercise]
-        return goal.iloc[0] if not goal.empty else None
+        return self.session.query(Goal).filter(Goal.exercise == exercise).first()
 
-    def get_progress(self, exercise):
+    def get_progress(self, exercise: str) -> pd.DataFrame:
         """Get progress for an exercise"""
-        return st.session_state.progress_df[st.session_state.progress_df['exercise'] == exercise]
+        progress = self.session.query(Progress).filter(Progress.exercise == exercise).all()
+        if not progress:
+            return pd.DataFrame(columns=['exercise', 'date', 'quantity'])
 
-    def get_active_goals(self):
+        return pd.DataFrame([
+            {'exercise': p.exercise, 'date': p.date, 'quantity': p.quantity}
+            for p in progress
+        ])
+
+    def get_active_goals(self) -> pd.DataFrame:
         """Get list of active goals"""
-        return st.session_state.goals_df[~st.session_state.goals_df['completed']]
+        goals = self.session.query(Goal).filter(Goal.completed == False).all()
+        if not goals:
+            return pd.DataFrame(columns=['exercise', 'target', 'start_date', 'duration_days', 'completed'])
 
-    def mark_goal_complete(self, exercise):
+        return pd.DataFrame([
+            {
+                'exercise': g.exercise,
+                'target': g.target,
+                'start_date': g.start_date,
+                'duration_days': g.duration_days,
+                'completed': g.completed
+            }
+            for g in goals
+        ])
+
+    def mark_goal_complete(self, exercise: str) -> None:
         """Mark a goal as completed"""
-        idx = st.session_state.goals_df.index[st.session_state.goals_df['exercise'] == exercise]
-        st.session_state.goals_df.loc[idx, 'completed'] = True
+        goal = self.session.query(Goal).filter(Goal.exercise == exercise).first()
+        if goal:
+            goal.completed = True
+            self.session.commit()
 
-    def save_data(self):
-        """Save data to session state"""
-        # Data is automatically saved in session state
-        pass
+    def save_data(self) -> None:
+        """Commit any pending changes to the database"""
+        self.session.commit()
