@@ -17,7 +17,7 @@ def render_goal_setting_form():
         start_date = st.date_input("Start Date", datetime.now())
 
         submitted = st.form_submit_button("Set Goal")
-        
+
         if submitted:
             valid, message = validate_input(exercise_name, target_quantity, duration_days)
             if valid:
@@ -34,7 +34,7 @@ def render_goal_setting_form():
 def render_progress_tracking():
     """Render the progress tracking section"""
     active_goals = st.session_state.data_manager.get_active_goals()
-    
+
     if active_goals.empty:
         st.info("No active goals. Set a new goal to start tracking!")
         return
@@ -44,24 +44,24 @@ def render_progress_tracking():
         target = goal['target']
         start_date = goal['start_date']
         duration_days = goal['duration_days']
-        
+
         st.subheader(f"🎯 {exercise}")
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             progress = st.session_state.data_manager.get_progress(exercise)
             total_done = progress['quantity'].sum()
             progress_pct = calculate_progress(total_done, target)
-            
+
             st.metric(
                 "Progress",
                 f"{total_done}/{target} ({progress_pct:.1f}%)"
             )
-            
+
             if progress_pct >= 100:
                 celebrate_completion(exercise)
-                
+
         with col2:
             today = datetime.now().date()
             quantity = st.number_input(
@@ -70,16 +70,16 @@ def render_progress_tracking():
                 value=0,
                 key=f"input_{exercise}"
             )
-            
+
             if st.button(f"Log Progress", key=f"log_{exercise}"):
                 st.session_state.data_manager.add_progress(exercise, today, quantity)
                 st.success("Progress logged!")
-                st.experimental_rerun()
+                st.rerun()
 
 def render_progress_charts():
     """Render progress visualization charts"""
     active_goals = st.session_state.data_manager.get_active_goals()
-    
+
     if active_goals.empty:
         st.info("No active goals to display statistics.")
         return
@@ -87,7 +87,7 @@ def render_progress_charts():
     for _, goal in active_goals.iterrows():
         exercise = goal['exercise']
         progress = st.session_state.data_manager.get_progress(exercise)
-        
+
         if not progress.empty:
             # Daily progress chart
             fig_daily = px.bar(
@@ -97,7 +97,7 @@ def render_progress_charts():
                 title=f"Daily {exercise} Progress"
             )
             st.plotly_chart(fig_daily, use_container_width=True)
-            
+
             # Cumulative progress chart
             progress['cumulative'] = progress['quantity'].cumsum()
             fig_cumulative = px.line(
@@ -119,4 +119,4 @@ def celebrate_completion(exercise):
     st.success(f"🎉 Congratulations! You've achieved your {exercise} goal!")
     if st.button("Mark as Complete", key=f"complete_{exercise}"):
         st.session_state.data_manager.mark_goal_complete(exercise)
-        st.experimental_rerun()
+        st.rerun()
